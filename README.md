@@ -4,7 +4,7 @@ QE Assistant Tool helps to QE's routine works.
 
 ## Overview 
 
-The QE Assistant Tool is aimed at facilitating QE tasks in RHACM environments, currently, this tool includes two abilities, one is helping to analyse the failed cases to generate the analysis report, another is helping to generate automation scripts following Polarion test cases.
+The QE Assistant Tool is aimed at facilitating QE tasks in OCM environments, currently, this tool includes two abilities, one is helping to analyse the failed cases to generate the analysis report, another is helping to generate automation scripts following Polarion test cases.
 
 ## How to use
 
@@ -93,11 +93,11 @@ pip install -r requirements.txt
 3. Export AI model enviroment variable
 
 ```
-export MODEL_API="https://granite-3-2-8b-instructxxxx:443/" ---This is located in Models.corp
-export MODEL_ID="/data/granite-3.2-8b-instruct"
+export MODEL_API="https://claude--apicast-production.apps.int.stc.ai.prod.us-east-1.aws.paas.redhat.com:443" ---This is located in Models.corp
+export MODEL_ID="claude-sonnet-4@20250514"
 export MODEL_KEY=="xxxxx"
 export POLARION_API="https://polarion.engineering.redhat.com/polarion"
-export POLARION_PROJECT="RHACM4K" --- This is RHACM project
+export POLARION_PROJECT="OSE" --- This is RHACM project
 export POLARION_TOKEN="xxx" 
 
 Note: If you export POLARION_USER and POLARION_PASSWORD, you should have polarion certificate named "redhatcert.pem" in the directory so that connect the polarion.
@@ -112,5 +112,6 @@ Then, you will get UI console, you can easily to chat it in this console.
 
 ### Demo
 
-- For analyzing failed cases, you just input jenkins job link in the chat.
-- For generating scripts, you can input prompt just like “generate scripts for RHACM4K-56952(polation case ID)”
+- For generating scripts, you can input prompt just like “generate scripts for OCP-40585(polation case ID)”
+
+- ToDo - Analyze failed cases, you just input jenkins job link in the chat.

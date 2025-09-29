@@ -3,7 +3,7 @@ import os
 import re
 from dotenv import load_dotenv
 import streamlit as st
-from agents import AssistantClient
+from agents.assistant_clients import AssistantClient
 from tools import get_error_message
 from tools import (
     extract_component_from_url,
@@ -41,7 +41,12 @@ def run_streamlit_app():
 )
     st.title("🛠️ AI Assistant System")
     st.markdown("""
-Generate the automation scripts and analyse the failed case.
+Generate automation scripts and analyze failed test cases.
+
+**💡 How to use:**
+- **With Polarion**: `generate automation scripts OCP-40585` (requires VPN)
+- **Without Polarion**: `generate automation scripts for user login functionality`
+- **Analyze failures**: Paste Jenkins URLs for AI-powered analysis
 """)
     # Sidebar configuration
     #with st.sidebar:
@@ -109,21 +114,98 @@ Generate the automation scripts and analyse the failed case.
             reply = ""    
             if intent == "generate_test_script":
                     # the logic for generating automation scripts
+                     feature_description = None  # Initialize to avoid UnboundLocalError
                      match = re.search(r"RHACM4K|OCP-\d+", prompt, re.IGNORECASE)
                      #match = re.search(prompt, re.IGNORECASE)
                      if match:
-                      ploarion_client = login_to_polarion(polarion_endpoint=POLARION_API,polarion_user=POLARION_USER,polarion_password=POLARION_PASSWD, polarion_token=POLARION_TOKEN)  
-                      polarion_id = match.group(0)
-                      project_id=POLARION_PROJECT  
-                      _, steps,_ = get_test_case_by_id(ploarion_client, project_id, polarion_id)
-                      feature_description = steps
+                      # Initialize reply for this branch
+                      reply = ""
+                      # Check if Polarion credentials are configured
+                      if not POLARION_API:
+                          reply = "❌ **Error**: POLARION_API environment variable is not set. Please configure Polarion credentials in your .env file."
+                      elif not POLARION_PROJECT:
+                          reply = "❌ **Error**: POLARION_PROJECT environment variable is not set. Please configure Polarion credentials in your .env file."
+                      elif not POLARION_TOKEN and not (POLARION_USER and POLARION_PASSWD):
+                          reply = "❌ **Error**: Polarion authentication not configured. Please set either POLARION_TOKEN or both POLARION_USER and POLARION_PASSWORD in your .env file."
+                      
+                      else:
+                          try:
+                              with st.spinner("Connecting to Polarion..."):
+                                  polarion_client = login_to_polarion(polarion_endpoint=POLARION_API, polarion_user=POLARION_USER, polarion_password=POLARION_PASSWD, polarion_token=POLARION_TOKEN)  
+                              
+                              if not polarion_client:
+                                  reply = """❌ **Polarion Connection Failed**
+                                  
+**Possible causes:**
+- Invalid or expired authentication token
+- Network connectivity issues  
+- VPN not connected to Red Hat internal network
+
+**Try these solutions:**
+1. **For Red Hat employees**: Connect to Red Hat VPN and try again
+2. **Alternative**: Use text-based script generation instead:
+   - Type: `generate automation scripts for user login functionality`
+   - Or describe your test scenario directly
+
+**Note**: The standalone Polarion script works fine, so this appears to be a Streamlit-specific authentication issue."""
+                              else:
+                                  polarion_id = match.group(0)
+                                  project_id = POLARION_PROJECT  
+                                  with st.spinner(f"Retrieving test case {polarion_id}..."):
+                                      _, steps, _ = get_test_case_by_id(polarion_client, project_id, polarion_id)
+                                  
+                                  if not steps:
+                                      reply = f"""❌ **Test Case Not Found**: {polarion_id}
+                                      
+**Possible reasons:**
+- Case ID doesn't exist in project {project_id}
+- You don't have access permissions for this case
+- Case ID format is incorrect
+
+**Alternative**: Try describing the test scenario instead:
+- `generate automation scripts for <your test description>`"""
+                                  else:
+                                      feature_description = steps
+                                      st.success(f"✅ Retrieved test case {polarion_id} successfully!")
+                          except Exception as e:
+                              error_msg = str(e)
+                              if "Failed to resolve" in error_msg or "nodename nor servname provided" in error_msg:
+                                  reply = """❌ **Network Error**: Cannot reach Polarion server
+                                  
+**This means:**
+- You're not connected to Red Hat's internal network
+- Polarion requires VPN access for external connections
+
+**Solutions:**
+1. **Connect to Red Hat VPN** (if you're a Red Hat employee)
+2. **Use text-based generation**: `generate automation scripts for <description>`
+3. **Contact IT** for VPN access to internal tools"""
+                              elif "Authentication failed" in error_msg or "No valid personal access token" in error_msg:
+                                  reply = """❌ **Authentication Error**: Polarion token invalid
+                                  
+**This means:**
+- Your Polarion token may be expired or invalid
+- Token permissions may be insufficient
+
+**Solutions:**
+1. **Generate new token** in Polarion settings
+2. **Update .env file** with the new token
+3. **Use text-based generation**: `generate automation scripts for <description>`
+
+**Note**: The standalone script works, suggesting a Streamlit-specific token handling issue."""
+                              else:
+                                  reply = f"""❌ **Polarion Error**: {error_msg}
+                                  
+**Alternative**: Try text-based script generation:
+- `generate automation scripts for <your test description>`"""
                      else:
                        feature_description = re.sub(r"generate( automation)? scripts", "", prompt, flags=re.IGNORECASE).strip()  
-                     if feature_description:
+                     # Only generate test script if we have feature_description and no error reply
+                     if not reply and feature_description:
                             test_script = generate_test_script(client, feature_description)
                             reply = f"**Automation scripts:**\n\n```\n{test_script}\n```"     
-                     else:
-                            reply = f"**No steps.**"
+                     elif not reply:
+                            reply = f"**No steps available.**"
                      st.markdown(reply)
             elif intent == "analyze_failure_url":
                  # if not st.session_state.get("generated"):

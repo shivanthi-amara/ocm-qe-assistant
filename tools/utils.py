@@ -40,24 +40,58 @@ def load_rules(md_file: str) -> dict:
  #       prompt = f"Please generate an automated test scripts for the following feature: {feature_description}"
  #       return ai_client.chat([{"role": "user", "content": prompt}])
 
-def generate_test_script(ai_client, feature_description):
-    keywords = ["policy", "page", "browser", "UI", "button"]
-    if any(
-    kw in item.get("step", "").lower()
-    for item in feature_description
-    for kw in keywords
-):
+def generate_test_script(ai_client, feature_description, force_cypress=False, include_screenshots=False):
+    keywords = ["policy", "page", "browser", "UI", "button", "click", "input", "form", "dialog", "dropdown"]
+    
+    # Handle both string and list inputs
+    if isinstance(feature_description, str):
+        # If it's a string, check if any keywords are in the description
+        use_cypress = any(kw in feature_description.lower() for kw in keywords)
+    elif isinstance(feature_description, list):
+        # If it's a list of dictionaries (from Polarion), check the steps
+        use_cypress = any(
+            kw in item.get("step", "").lower()
+            for item in feature_description
+            for kw in keywords
+        )
+    else:
+        # Default to ginkgo if we can't determine
+        use_cypress = False
+    
+    # Override with force_cypress if specified
+    if force_cypress:
+        use_cypress = True
+    
+    if use_cypress:
         framework = "cypress"
         language = "JavaScript"
         description = "You are a QA automation engineer experienced with Cypress, the JavaScript end-to-end testing framework."
+        
+        # Enhanced Cypress style guide with optional features
         style_guide = "Write realistic Cypress test code using JavaScript to automate browser interactions and validate UI behavior."
+        
+        if include_screenshots:
+            style_guide += " Include cy.screenshot() commands after key interactions for debugging purposes."
+            
+        additional_requirements = """
+- Use proper Cypress selectors (data-testid, data-cy attributes when possible)
+- Include proper waits and assertions
+- Handle loading states and dynamic content
+- Use Cypress best practices for element selection and interaction"""
+        
+        if include_screenshots:
+            additional_requirements += """
+- Add cy.screenshot('step-name') after important actions
+- Use descriptive screenshot names based on the test step"""
+            
     else:
         framework = "ginkgo"
         language = "Go"
         description = "You are a QA automation engineer experienced with Ginkgo, the BDD testing framework for Go."
         style_guide = "Write clean and idiomatic Go code using Ginkgo for BDD-style testing. Use Gomega for assertions."
+        additional_requirements = ""
     prompt = f"""
- {description}
+{description}
 Please generate an automated test script using **{framework}** for the following feature. Follow the standard practices and style conventions of the {framework} framework.
 
 
@@ -70,12 +104,26 @@ Please generate an automated test script using **{framework}** for the following
 - {style_guide}
 - Follow best practices for structuring tests
 - Use mocks or stubs as needed
-- Add comments to explain each step
+- Add comments to explain each step{additional_requirements}
 - Return only the test code inside a markdown code block
+
+### Example Structure for Cypress:
+```javascript
+describe('Feature Name', () => {{
+  beforeEach(() => {{
+    // Setup steps
+  }});
+
+  it('should perform the test scenario', () => {{
+    // Test steps with proper selectors and assertions
+    // Include cy.screenshot() if screenshots are enabled
+  }});
+}});
+```
 """
 
     # Send prompt to AI and return response
-    response=ai_client.chat([{"role": "user", "content": prompt}])
+    response = ai_client.chat([{"role": "user", "content": prompt}])
     #print("Raw AI response:", response)
     return response
     

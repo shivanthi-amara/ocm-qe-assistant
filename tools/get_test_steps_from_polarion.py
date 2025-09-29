@@ -31,18 +31,41 @@ def login_to_polarion(polarion_endpoint, polarion_user, polarion_password, polar
         logging.info('Connection to Polarion OK.')
         return polarion_client
 
-    except Exception:
-        logging.info('SSL Error. Adding custom certs to Certifi store...')
-        cafile = certifi.where()
-        with open(f"{cwd}/redhatcert.pem", 'rb') as infile:
-            customca = infile.read()
-        with open(cafile, 'ab') as outfile:
-            outfile.write(customca)
-        logging.info('That might have worked.')
-        # Retry once after cert patch
-        polarion_client = polarion.Polarion(polarion_endpoint, polarion_user, polarion_password, "")
-        logging.info('Connection to Polarion OK.')
-        return polarion_client
+    except Exception as e:
+        logging.info(f'Initial connection failed: {str(e)}')
+        logging.info('Attempting SSL certificate fix...')
+        
+        # Check if certificate file exists
+        cert_file = f"{cwd}/redhatcert.pem"
+        if not os.path.exists(cert_file):
+            logging.error(f"Certificate file not found: {cert_file}")
+            logging.error("Please ensure redhatcert.pem is in the project root directory")
+            return None
+            
+        try:
+            cafile = certifi.where()
+            with open(cert_file, 'rb') as infile:
+                customca = infile.read()
+            with open(cafile, 'ab') as outfile:
+                outfile.write(customca)
+            logging.info('Custom certificate added to certifi store.')
+            
+            # Retry with same authentication method that was originally attempted
+            if polarion_token:
+                logging.info("Retrying with token authentication after certificate fix...")
+                polarion_client = polarion.Polarion(polarion_endpoint, "", "", polarion_token)
+            elif polarion_user and polarion_password:
+                logging.info("Retrying with username/password authentication after certificate fix...")
+                polarion_client = polarion.Polarion(polarion_endpoint, polarion_user, polarion_password, "")
+            else:
+                raise ValueError("Either token or username/password must be provided.")
+                
+            logging.info('Connection to Polarion OK after certificate fix.')
+            return polarion_client
+            
+        except Exception as retry_error:
+            logging.error(f'Connection failed even after certificate fix: {str(retry_error)}')
+            return None
 
 
 def get_test_case_by_id(polarion_client, project_id, case_id):
