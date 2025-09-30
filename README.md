@@ -22,7 +22,6 @@ This tool is now compatible with Google's Gemini CLI. See [GEMINI.md](GEMINI.md)
 1. Clone the repository:
 
  ```
- git clone https://github.com/stolostron/acm-qe-assistant.git
  cd acm-qe-assistant
  ```
  2. Install dependencies:
@@ -33,7 +32,7 @@ pip install -r requirements.txt
 
 ```
 POLARION_API="https://polarion.engineering.redhat.com/polarion"
-POLARION_PROJECT="RHACM4K" --- This is RHACM project
+POLARION_PROJECT="OSE" --- This is RHACM project
 POLARION_TOKEN="xxx" 
 
 ```
@@ -52,8 +51,7 @@ This tool is now compatible with Anthropic's Claude Code CLI, providing intellig
 1. Clone the repository:
    
 ```
-git clone https://github.com/stolostron/acm-qe-assistant.git
-cd acm-qe-assistant
+cd ocm-qe-assistant
 ```
 
 2. Install dependencies:
@@ -66,7 +64,7 @@ pip install -r requirements.txt
    
 ```
 export POLARION_API="https://polarion.engineering.redhat.com/polarion"
-export POLARION_PROJECT="RHACM4K"
+export POLARION_PROJECT="OSE"
 export POLARION_TOKEN="xxx"
 ```
 
@@ -82,8 +80,7 @@ export POLARION_TOKEN="xxx"
 1. Clone the repository:
  
  ```
- git clone https://github.com/stolostron/acm-qe-assistant.git
- cd acm-qe-assistant
+ cd ocm-qe-assistant
  ```
 2. Install dependencies:
 
@@ -97,7 +94,7 @@ export MODEL_API="https://claude--apicast-production.apps.int.stc.ai.prod.us-eas
 export MODEL_ID="claude-sonnet-4@20250514"
 export MODEL_KEY=="xxxxx"
 export POLARION_API="https://polarion.engineering.redhat.com/polarion"
-export POLARION_PROJECT="OSE" --- This is RHACM project
+export POLARION_PROJECT="OSE" --- This is OCM project
 export POLARION_TOKEN="xxx" 
 
 Note: If you export POLARION_USER and POLARION_PASSWORD, you should have polarion certificate named "redhatcert.pem" in the directory so that connect the polarion.
