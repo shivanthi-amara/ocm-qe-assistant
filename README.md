@@ -1,4 +1,4 @@
-# acm-qe-assistant
+# ocm-qe-assistant
 
 QE Assistant Tool helps to QE's routine works.
 
@@ -22,7 +22,7 @@ This tool is now compatible with Google's Gemini CLI. See [GEMINI.md](GEMINI.md)
 1. Clone the repository:
 
  ```
- cd acm-qe-assistant
+ cd ocm-qe-assistant
  ```
  2. Install dependencies:
 ```
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 ```
 POLARION_API="https://polarion.engineering.redhat.com/polarion"
-POLARION_PROJECT="OSE" --- This is RHACM project
+POLARION_PROJECT="OSE" --- This is OCM project
 POLARION_TOKEN="xxx" 
 
 ```
