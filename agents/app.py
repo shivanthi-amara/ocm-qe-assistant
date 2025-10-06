@@ -9,7 +9,9 @@ from tools import (
     extract_component_from_url,
     load_rules,
     analyze_failed_case,
-    generate_test_script
+    generate_test_script,
+    extract_code_path_from_prompt,
+    load_code_file
 )
 from tools import login_to_polarion, get_test_case_by_id
 import truststore 
@@ -44,7 +46,7 @@ def run_streamlit_app():
 Generate automation scripts and analyze failed test cases.
 
 **💡 How to use:**
-- **With Polarion**: `generate automation scripts OCP-40585` (requires VPN)
+- **With Polarion**: `generate automation scripts OCP-40585 with components/App/App.tsx` (requires VPN)
 - **Without Polarion**: `generate automation scripts for user login functionality`
 - **Analyze failures**: Paste Jenkins URLs for AI-powered analysis
 """)
@@ -200,9 +202,21 @@ Generate automation scripts and analyze failed test cases.
 - `generate automation scripts for <your test description>`"""
                      else:
                        feature_description = re.sub(r"generate( automation)? scripts", "", prompt, flags=re.IGNORECASE).strip()  
+                     
+                     # Extract single code file path from prompt if any
+                     code_file_path = extract_code_path_from_prompt(prompt)
+                     code_file_content = None
+                     if code_file_path:
+                         with st.spinner(f"Loading code file: {code_file_path}..."):
+                             try:
+                                 code_file_content = load_code_file(code_file_path)
+                                 st.success(f"✅ Loaded code file: {code_file_path}")
+                             except Exception as e:
+                                 st.error(f"❌ Error loading file {code_file_path}: {str(e)}")
+                     
                      # Only generate test script if we have feature_description and no error reply
                      if not reply and feature_description:
-                            test_script = generate_test_script(client, feature_description)
+                            test_script = generate_test_script(client, feature_description, code_file_content=code_file_content)
                             reply = f"**Automation scripts:**\n\n```\n{test_script}\n```"     
                      elif not reply:
                             reply = f"**No steps available.**"
