@@ -1,5 +1,6 @@
 from collections import defaultdict
 import re
+import os
 from typing import Dict, List
 from urllib.parse import urlparse
 
@@ -35,12 +36,42 @@ def load_rules(md_file: str) -> dict:
                    component_guidelines[current_component] += line
         except Exception as e:
             raise ValueError(f"can not load the file: {str(e)}")
-        
+
+def load_code_file(file_path: str) -> str:
+    normalized_path = file_path.strip('/\\').replace('\\', '/')
+    full_path = os.path.join("code-context", normalized_path)
+    
+    if not os.path.exists(full_path):
+        raise FileNotFoundError(f"File not found: {normalized_path}")
+    
+    try:
+        with open(full_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        raise Exception(f"Error reading file {full_path}: {e}")
+
+def extract_code_path_from_prompt(prompt: str) -> str:
+    patterns = [
+        r'with\s+([A-Za-z0-9_\-\.\/]+\.(tsx?|jsx?))',
+        r'using\s+([A-Za-z0-9_\-\.\/]+\.(tsx?|jsx?))',
+        r'include\s+([A-Za-z0-9_\-\.\/]+\.(tsx?|jsx?))',
+        r'file\s+([A-Za-z0-9_\-\.\/]+\.(tsx?|jsx?))',
+    ] 
+    for pattern in patterns:
+        matches = re.findall(pattern, prompt, re.IGNORECASE)
+        if matches:
+            match = matches[0]
+            if isinstance(match, tuple):
+                return match[0]
+            else:
+                return match
+    return None
+
 #def generate_test_script(ai_client, feature_description):
  #       prompt = f"Please generate an automated test scripts for the following feature: {feature_description}"
  #       return ai_client.chat([{"role": "user", "content": prompt}])
 
-def generate_test_script(ai_client, feature_description, force_cypress=False, include_screenshots=False):
+def generate_test_script(ai_client, feature_description, force_cypress=False, include_screenshots=False, code_file_content=None):
     keywords = ["policy", "page", "browser", "UI", "button", "click", "input", "form", "dialog", "dropdown"]
     
     # Handle both string and list inputs
@@ -90,11 +121,27 @@ def generate_test_script(ai_client, feature_description, force_cypress=False, in
         description = "You are a QA automation engineer experienced with Ginkgo, the BDD testing framework for Go."
         style_guide = "Write clean and idiomatic Go code using Ginkgo for BDD-style testing. Use Gomega for assertions."
         additional_requirements = ""
+    
+    # Build the prompt with optional code context
+    code_context_section = ""
+    if code_file_content:
+        code_context_section = f"""
+
+### Code Context:
+The following code file is provided for reference to understand the implementation:
+
+```typescript
+{code_file_content}
+```
+
+Please use the provided code context to understand the component structure, selectors, and implementation details when generating the test script.
+"""
+    
     prompt = f"""
 {description}
 Please generate an automated test script using **{framework}** for the following feature. Follow the standard practices and style conventions of the {framework} framework.
 
-
+{code_context_section}
 ### Feature Description:
 {feature_description}
 
@@ -126,7 +173,7 @@ describe('Feature Name', () => {{
     response = ai_client.chat([{"role": "user", "content": prompt}])
     #print("Raw AI response:", response)
     return response
-    
+
 
 
 
