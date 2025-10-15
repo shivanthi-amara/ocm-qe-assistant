@@ -10,10 +10,12 @@ from tools import (
     load_rules,
     analyze_failed_case,
     generate_test_script,
+    generate_test_script_with_fixture,
     extract_code_path_from_prompt,
-    load_code_file
+    load_code_file,
+    login_to_polarion, 
+    get_test_case_by_id
 )
-from tools import login_to_polarion, get_test_case_by_id
 import truststore 
 
 truststore.inject_into_ssl()
@@ -49,18 +51,7 @@ Generate automation scripts and analyze failed test cases.
 - **With Polarion**: `generate automation scripts OCP-40585 with components/App/App.tsx` (requires VPN)
 - **Without Polarion**: `generate automation scripts for user login functionality`
 - **Analyze failures**: Paste Jenkins URLs for AI-powered analysis
-""")
-    # Sidebar configuration
-    #with st.sidebar:
-   #  st.header("Configuration")
-   #  rules_file = st.selectbox(
-   #     "guidelines",
-   #     ["rules/component-keywords.md"],
-   #     format_func=lambda x: x.split('/')[-1]
-   #  )
-    
-   #  st.divider()
-     
+""")  
     # manage chat states 
     if "messages" not in st.session_state:
       st.session_state.messages = []
@@ -81,18 +72,6 @@ Generate automation scripts and analyze failed test cases.
        with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-    #def regenerate_analysis():
-    #    if "last_suite_url" in st.session_state and st.session_state.last_suite_url:
-    #        prompt = f"{st.session_state.last_suite_url}"
-    #        st.session_state.messages.append({"role": "user", "content": prompt})
-    #        st.session_state.rerun_trigger = True 
-            #st.experimental_rerun()
-    #if "rerun_trigger" in st.session_state and st.session_state.rerun_trigger:
-    # Reset the rerun trigger flag
-    #  st.session_state.rerun_trigger = False
-    # Trigger the rerun here
-    #  st.rerun()
-   
     if prompt := st.chat_input("Ask your question, for example, generate the automation scripts or analyse the failed case"):
       # save user input
       st.session_state.messages.append({"role": "user", "content": prompt})
@@ -154,7 +133,7 @@ Generate automation scripts and analyze failed test cases.
                                   polarion_id = match.group(0)
                                   project_id = POLARION_PROJECT  
                                   with st.spinner(f"Retrieving test case {polarion_id}..."):
-                                      _, steps, _ = get_test_case_by_id(polarion_client, project_id, polarion_id)
+                                      case, steps, component = get_test_case_by_id(polarion_client, project_id, polarion_id)
                                   
                                   if not steps:
                                       reply = f"""❌ **Test Case Not Found**: {polarion_id}
@@ -168,6 +147,7 @@ Generate automation scripts and analyze failed test cases.
 - `generate automation scripts for <your test description>`"""
                                   else:
                                       feature_description = steps
+                                      test_case_title = case.title if case else ""
                                       st.success(f"✅ Retrieved test case {polarion_id} successfully!")
                           except Exception as e:
                               error_msg = str(e)
@@ -216,8 +196,9 @@ Generate automation scripts and analyze failed test cases.
                      
                      # Only generate test script if we have feature_description and no error reply
                      if not reply and feature_description:
-                            test_script = generate_test_script(client, feature_description, code_file_content=code_file_content)
-                            reply = f"**Automation scripts:**\n\n```\n{test_script}\n```"     
+                            
+                            result = generate_test_script_with_fixture(client, feature_description, code_file_content=code_file_content)
+                            reply = f"**Automation scripts:**\n\n```javascript\n{result['test_script']}\n```\n\n**Fixture File:**\n```json\n{result['fixture_content']}\n```"     
                      elif not reply:
                             reply = f"**No steps available.**"
                      st.markdown(reply)
@@ -257,16 +238,6 @@ Generate automation scripts and analyze failed test cases.
                                         f"[🔗 Link to Jenkins Job]({st.session_state.last_suite_url})",
                                         unsafe_allow_html=True,
                                      )
-                    #with col2:
-                             # if st.button("🔄 Regenerate", key="regenerate_btn"):
-                             #      st.session_state.pending_regeneration = True
-                             #      st.session_state.messages.append({"role": "user", "content": "re-analyse"})
-                             #      st.rerun()
-                             #  st.button("🔄 Regenerate", key="regenerate_btn", on_click=regenerate_analysis)
-                            #   pass
-                            #if st.button("🔄 Regenerate", key="regenerate_btn"):
-                            #     st.session_state.need_rerun = True
-                             #     st.session_state.rerun_prompt = f"re-analyze {st.session_state.last_suite_url}"               
             else:
               # AI chat by default
               # parse AI response
