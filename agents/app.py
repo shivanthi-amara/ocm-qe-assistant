@@ -14,7 +14,8 @@ from tools import (
     extract_code_path_from_prompt,
     load_code_file,
     login_to_polarion, 
-    get_test_case_by_id
+    get_test_case_by_id,
+    write_test_files_to_output
 )
 import truststore 
 
@@ -48,7 +49,7 @@ def run_streamlit_app():
 Generate automation scripts and analyze failed test cases.
 
 **💡 How to use:**
-- **With Polarion**: `generate automation scripts OCP-40585 with components/App/App.tsx` (requires VPN)
+- **With Polarion**: `generate automation scripts OCP-40585 with components/MachinePools/MachinePools.jsx` (requires VPN)
 - **Without Polarion**: `generate automation scripts for user login functionality`
 - **Analyze failures**: Paste Jenkins URLs for AI-powered analysis
 """)  
@@ -198,7 +199,29 @@ Generate automation scripts and analyze failed test cases.
                      if not reply and feature_description:
                             
                             result = generate_test_script_with_fixture(client, feature_description, code_file_content=code_file_content)
-                            reply = f"**Automation scripts:**\n\n```javascript\n{result['test_script']}\n```\n\n**Fixture File:**\n```json\n{result['fixture_content']}\n```"     
+                            
+                            # Write files to output directory
+                            file_info = write_test_files_to_output(
+                                result['test_script'], 
+                                result['fixture_content'],
+                                test_name=feature_description[:50] if len(feature_description) > 10 else None
+                            )
+                            
+                            # Update reply to include file paths
+                            reply = f"""**Automation scripts:**
+
+```javascript
+{result['test_script']}
+```
+
+**Fixture File:**
+```json
+{result['fixture_content']}
+```
+
+**Files saved to:**
+- Test script: `{file_info['test_file_path']}`
+- Fixture file: `{file_info['fixture_file_path']}`"""
                      elif not reply:
                             reply = f"**No steps available.**"
                      st.markdown(reply)

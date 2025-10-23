@@ -4,7 +4,7 @@ import os
 import json
 from typing import Dict, List, Any
 from urllib.parse import urlparse
-
+from datetime import datetime
 from streamlit import html
 
 def extract_component_from_url(url: str) -> str | None:
@@ -427,6 +427,34 @@ def generate_test_script_with_polarion_fixture(ai_client, polarion_steps, test_c
     return {
         "test_script": test_script,
         "fixture_content": fixture_content
+    }
+
+def write_test_files_to_output(test_script, fixture_content, test_name=None):
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if test_name:
+        clean_name = re.sub(r'[^\w\-_]', '_', test_name)[:50]
+        test_filename = f"{clean_name}_{timestamp}.js"
+        fixture_filename = f"{clean_name}_fixture_{timestamp}.json"
+    else:
+        test_filename = f"test_script_{timestamp}.js"
+        fixture_filename = f"fixture_{timestamp}.json"
+    
+    test_file_path = os.path.join(output_dir, test_filename)
+    with open(test_file_path, 'w', encoding='utf-8') as f:
+        f.write(test_script)
+    
+    fixture_file_path = os.path.join(output_dir, fixture_filename)
+    with open(fixture_file_path, 'w', encoding='utf-8') as f:
+        f.write(fixture_content)
+    
+    return {
+        "test_file_path": test_file_path,
+        "fixture_file_path": fixture_file_path,
+        "test_filename": test_filename,
+        "fixture_filename": fixture_filename
     }
 
 def analyze_failed_case(ai_client, component, failed_cases, guidelines_dict):
